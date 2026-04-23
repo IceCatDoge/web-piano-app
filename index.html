@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Web Piano</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --panel-bg: #16213e;
+            --text: #e0e0e0;
+            --accent: #f0a500;
+            --accent2: #e94560;
+            --white-key: #f8f8f0;
+            --white-key-active: #e8e8d0;
+            --black-key: #2a2a2a;
+            --black-key-active: #4a4a4a;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            --key-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+            --key-shadow-active: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --border-radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 30%, #16213e 60%, #0f0f1a 100%);
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 10px;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--panel-bg);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 80px rgba(233, 68, 96, 0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        /* ── Header / Control Panel ── */
+        .control-panel {
+            padding: 16px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            z-index: 10;
+        }
+
+        .app-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 4px;
+        }
+        .app-title .icon {
+            font-size: 1.6rem;
+        }
+
+        .instrument-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            flex: 1;
+            justify-content: center;
+            min-width: 200px;
+        }
+
+        .inst-btn {
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            letter-spacing: 0.01em;
+            font-family: inherit;
+        }
+        .inst-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.35);
+            color: #fff;
+        }
+        .inst-btn.active {
+            background: var(--accent2);
+            border-color: var(--accent2);
+            color: #fff;
+            box-shadow: 0 0 18px rgba(233, 68, 96, 0.4);
+            font-weight: 600;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .control-label {
+            font-size: 0.78rem;
+            color: #aaa;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        .vol-slider {
+            -webkit-appearance: none;
+            width: 80px;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            cursor: pointer;
+        }
+        .vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid var(--accent2);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+        .vol-slider::-webkit-slider-thumb:active {
+            transform: scale(1.15);
+        }
+
+        .toggle-btn {
+            padding: 7px 14px;
+            border-radius: 18px;
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .toggle-btn.on {
+            background: rgba(240, 165, 0, 0.2);
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 12px rgba(240, 165, 0, 0.25);
+        }
+
+        /* ── Piano Container ── */
+        .piano-wrapper {
+            position: relative;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px 8px 20px 8px;
+            scroll-behavior: smooth;
+            cursor: default;
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            min-height: 260px;
+            /* Scrollbar styling */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+        .piano-wrapper::-webkit-scrollbar {
+            height: 5px;
+        }
+        .piano-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 3px;
+        }
+        .piano-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .piano {
+            position: relative;
+            display: flex;
+            margin: 0 auto;
+            flex-shrink: 0;
+            /* White key width set via JS; fallback */;
+        }
+
+        /* ── White Keys ── */
+        .white-key {
+            position: relative;
+            background: linear-gradient(180deg, #fefefe 0%, #f2f2ea 5%, #e8e8e0 30%, #f6f6f0 100%);
+            border: 1px solid #c8c8c0;
+            border-radius: 0 0 7px 7px;
+            cursor: pointer;
+            box-shadow: var(--key-shadow), inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+            transition: background 0.06s ease, box-shadow 0.06s ease, transform 0.06s ease;
+            z-index: 1;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 14px;
+            touch-action: none;
+        }
+        .white-key:hover {
+            background: linear-gradient(180deg, #fff 0%, #f8f8f2 5%, #efefe8 30%, #fafaf5 100%);
+        }
+        .white-key.active {
+            background: linear-gradient(180deg, #e8e8d8 0%, #dddcc8 30%, #e0e0d0 100%);
+            box-shadow: var(--key-shadow-active), inset 0 1px 3px rgba(0, 0, 0, 0.15);
+            transform: translateY(3px);
+            border-color: #b0b0a8;
+        }
+        .white-key .key-label {
+            font-size: 0.7rem;
+            color: #888;
+            font-weight: 500;
+            pointer-events: none;
+            letter-spacing: 0.03em;
+            text-align: center;
+            line-height: 1.2;
+            opacity: 0.7;
+        }
+        .white-key .key-label .note-name {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #555;
+        }
+        .white-key .key-label .kb-key {
+            display: block;
+            font-size: 0.6rem;
+            color: #999;
+            background: rgba(0, 0, 0, 0.06);
+            border-radius: 3px;
+            padding: 1px 5px;
+            margin-top: 2px;
+            min-width: 16px;
+        }
+
+        /* ── Black Keys ── */
+        .black-key {
+            position: absolute;
+            background: linear-gradient(180deg, #3a3a3a 0%, #1f1f1f 40%, #2a2a2a 100%);
+            border: 1px solid #0a0a0a;
+            border-radius: 0 0 5px 5px;
+            cursor: pointer;
+            z-index: 3;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5), inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+            transition: background 0.06s ease, box-shadow 0.06s ease, transform 0.06s ease;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 8px;
+            touch-action: none;
+        }
+        .black-key:hover {
+            background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 40%, #353535 100%);
+        }
+        .black-key.active {
+            background: linear-gradient(180deg, #555 0%, #3a3a3a 40%, #444 100%);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.5);
+            transform: translateY(2px);
+        }
+        .black-key .key-label {
+            font-size: 0.55rem;
+            color: #aaa;
+            pointer-events: none;
+            text-align: center;
+            line-height: 1.1;
+        }
+        .black-key .key-label .kb-key {
+            display: block;
+            font-size: 0.55rem;
+            color: #ccc;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            padding: 1px 4px;
+            margin-top: 1px;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .control-panel {
+                padding: 10px 12px;
+                gap: 8px;
+            }
+            .app-title {
+                font-size: 1.1rem;
+                margin-right: 0;
+            }
+            .inst-btn {
+                padding: 6px 10px;
+                font-size: 0.73rem;
+                border-radius: 16px;
+            }
+            .vol-slider {
+                width: 50px;
+            }
+            .control-label {
+                font-size: 0.68rem;
+            }
+            .toggle-btn {
+                padding: 5px 10px;
+                font-size: 0.7rem;
+                border-radius: 14px;
+            }
+            .piano-wrapper {
+                padding: 6px 4px 14px 4px;
+                min-height: 200px;
+            }
+            .white-key {
+                border-radius: 0 0 4px 4px;
+                padding-bottom: 8px;
+            }
+            .white-key .key-label {
+                font-size: 0.6rem;
+            }
+            .white-key .key-label .note-name {
+                font-size: 0.65rem;
+            }
+            .white-key .key-label .kb-key {
+                font-size: 0.5rem;
+            }
+            .black-key {
+                border-radius: 0 0 3px 3px;
+                padding-bottom: 5px;
+            }
+            .black-key .key-label {
+                font-size: 0.45rem;
+            }
+            .black-key .key-label .kb-key {
+                font-size: 0.45rem;
+            }
+            /* ── Sustain Pedal Button ── */
+            .sustain-btn {
+                position: absolute;
+                bottom: 10px;
+                left: 10px;
+                z-index: 20;
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                border: 2px solid rgba(255,255,255,0.25);
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(6px);
+                -webkit-backdrop-filter: blur(6px);
+                color: #ccc;
+                font-size: 1.4rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.15s ease;
+                touch-action: none;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                user-select: none;
+                -webkit-user-select: none;
+            }
+
+                .sustain-btn:hover {
+                    background: rgba(255,255,255,0.12);
+                    border-color: rgba(255,255,255,0.4);
+                }
+
+                .sustain-btn.active {
+                    background: var(--accent);
+                    border-color: var(--accent);
+                    color: #000;
+                    box-shadow: 0 0 20px var(--accent);
+                    transform: scale(1.05);
+                }
+
+            @media (max-width: 600px) {
+                .sustain-btn {
+                    width: 48px;
+                    height: 48px;
+                    font-size: 1.2rem;
+                    bottom: 8px;
+                    left: 8px;
+                }
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="app-title">
+                <span class="icon">🎹</span> Web Piano
+            </div>
+            <div class="instrument-tabs" id="instrumentTabs">
+                <button class="inst-btn active" data-instrument="piano">Piano</button>
+                <button class="inst-btn" data-instrument="organ">Organ</button>
+                <button class="inst-btn" data-instrument="synth">Synth</button>
+                <button class="inst-btn" data-instrument="bell">Bell</button>
+                <button class="inst-btn" data-instrument="pluck">Pluck</button>
+            </div>
+            <div class="control-group">
+                <span class="control-label">🔊</span>
+                <input type="range" class="vol-slider" id="volumeSlider" min="0" max="100" value="70" title="Volume">
+            </div>
+            <button class="toggle-btn on" id="reverbToggle" title="Toggle Reverb">✨ Reverb</button>
+        </div>
+
+        <!-- Piano Keyboard -->
+        <div class="piano-wrapper" id="pianoWrapper">
+            <div class="piano" id="piano"></div>
+            <button id="sustainPedal" class="sustain-btn" title="Sustain Pedal (hold)">🎵</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ─────────────────────────────────────
+            // CONFIGURATION
+            // ─────────────────────────────────────
+            const WHITE_KEY_WIDTH = 44; // px per white key
+            const WHITE_KEY_HEIGHT = 210; // px
+            const BLACK_KEY_WIDTH_RATIO = 0.58; // relative to white key width
+            const BLACK_KEY_HEIGHT_RATIO = 0.6; // relative to white key height
+            const MOBILE_BREAKPOINT = 600;
+            const TOTAL_WHITE_KEYS = 15; // C3 to C5
+
+            // Note definitions: white keys from C3 (MIDI 48) to C5 (MIDI 72)
+            const whiteKeyNotes = [
+                { midi: 48, name: 'C3', kbKey: 'Z' },
+                { midi: 50, name: 'D3', kbKey: 'X' },
+                { midi: 52, name: 'E3', kbKey: 'C' },
+                { midi: 53, name: 'F3', kbKey: 'V' },
+                { midi: 55, name: 'G3', kbKey: 'B' },
+                { midi: 57, name: 'A3', kbKey: 'N' },
+                { midi: 59, name: 'B3', kbKey: 'M' },
+                { midi: 60, name: 'C4', kbKey: 'Q' },
+                { midi: 62, name: 'D4', kbKey: 'W' },
+                { midi: 64, name: 'E4', kbKey: 'E' },
+                { midi: 65, name: 'F4', kbKey: 'R' },
+                { midi: 67, name: 'G4', kbKey: 'T' },
+                { midi: 69, name: 'A4', kbKey: 'Y' },
+                { midi: 71, name: 'B4', kbKey: 'U' },
+                { midi: 72, name: 'C5', kbKey: 'I' },
+            ];
+
+            // Black key definitions: placed after white key index
+            const blackKeyDefs = [
+                { afterWhiteIndex: 0, midi: 49, name: 'C#3', kbKey: 'S' },
+                { afterWhiteIndex: 1, midi: 51, name: 'D#3', kbKey: 'D' },
+                { afterWhiteIndex: 3, midi: 54, name: 'F#3', kbKey: 'G' },
+                { afterWhiteIndex: 4, midi: 56, name: 'G#3', kbKey: 'H' },
+                { afterWhiteIndex: 5, midi: 58, name: 'A#3', kbKey: 'J' },
+                { afterWhiteIndex: 7, midi: 61, name: 'C#4', kbKey: '2' },
+                { afterWhiteIndex: 8, midi: 63, name: 'D#4', kbKey: '3' },
+                { afterWhiteIndex: 10, midi: 66, name: 'F#4', kbKey: '5' },
+                { afterWhiteIndex: 11, midi: 68, name: 'G#4', kbKey: '6' },
+                { afterWhiteIndex: 12, midi: 70, name: 'A#4', kbKey: '7' },
+            ];
+
+            // ─────────────────────────────────────
+            // AUDIO ENGINE
+            // ─────────────────────────────────────
+            let audioCtx = null;
+            let masterGain = null;
+            let reverbWetGain = null;
+            let reverbEnabled = true;
+            let currentInstrument = 'piano';
+            let masterVolume = 0.7;
+
+            // Track active notes for release
+            const activeNotes = new Map(); // midiNote -> { release: fn, element: DOM element }
+            const activePointers = new Map(); // pointerId -> { midiNote, element }
+
+            let sustainOn = false;
+            const sustainedNotes = new Set(); // tracks notes held by sustain
+
+            function initAudio() {
+                if (audioCtx) return;
+                audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+
+                // Master output chain
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = masterVolume;
+                masterGain.connect(audioCtx.destination);
+
+                // Reverb setup
+                setupReverb();
+            }
+
+            function setupReverb() {
+                if (!audioCtx) return;
+                // Remove old reverb if exists
+                if (reverbWetGain) {
+                    try { reverbWetGain.disconnect(); } catch (e) {}
+                }
+
+                const reverbInput = audioCtx.createGain();
+                reverbInput.gain.value = 0.35;
+
+                // Create multi-tap delay reverb
+                const delayTimes = [0.031, 0.047, 0.059, 0.073, 0.089, 0.103];
+                const feedbackGains = [0.45, 0.38, 0.33, 0.28, 0.22, 0.18];
+                const merger = audioCtx.createGain();
+                merger.gain.value = 0.5;
+
+                delayTimes.forEach((time, i) => {
+                    const delay = audioCtx.createDelay(1.0);
+                    delay.delayTime.value = time;
+                    const feedback = audioCtx.createGain();
+                    feedback.gain.value = feedbackGains[i];
+                    const lpf = audioCtx.createBiquadFilter();
+                    lpf.type = 'lowpass';
+                    lpf.frequency.value = 4000 - i * 500;
+                    lpf.Q.value = 0.5;
+
+                    reverbInput.connect(delay);
+                    delay.connect(lpf);
+                    lpf.connect(feedback);
+                    feedback.connect(delay);
+                    lpf.connect(merger);
+                });
+
+                reverbWetGain = audioCtx.createGain();
+                reverbWetGain.gain.value = reverbEnabled ? 1.0 : 0.0;
+                merger.connect(reverbWetGain);
+                reverbWetGain.connect(masterGain);
+
+                // Store reverb input for note sends
+                reverbWetGain._reverbInput = reverbInput;
+                reverbWetGain._merger = merger;
+            }
+
+            function getReverbInput() {
+                if (!reverbWetGain || !reverbWetGain._reverbInput) return null;
+                return reverbWetGain._reverbInput;
+            }
+
+            function setReverbEnabled(enabled) {
+                reverbEnabled = enabled;
+                if (reverbWetGain) {
+                    reverbWetGain.gain.setTargetAtTime(enabled ? 1.0 : 0.0, audioCtx.currentTime, 0.05);
+                }
+            }
+
+            function setVolume(vol) {
+                masterVolume = vol;
+                if (masterGain) {
+                    masterGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
+                }
+            }
+
+            function midiToFreq(midi) {
+                return 440.0 * Math.pow(2, (midi - 69) / 12);
+            }
+
+            // ── Instrument Synthesizers ──
+            function createPianoNote(ctx, freq, destination, reverbDest) {
+                const now = ctx.currentTime;
+                const harmonics = [
+                    { mult: 1.0, amp: 1.0, decayTime: 1.8 },
+                    { mult: 2.0, amp: 0.55, decayTime: 1.2 },
+                    { mult: 3.0, amp: 0.3, decayTime: 0.7 },
+                    { mult: 4.0, amp: 0.15, decayTime: 0.4 },
+                    { mult: 5.01, amp: 0.06, decayTime: 0.25 },
+                ];
+
+                const dryGain = ctx.createGain();
+                dryGain.gain.value = 0;
+                dryGain.connect(destination);
+
+                const reverbGain = ctx.createGain();
+                reverbGain.gain.value = 0;
+                if (reverbDest) reverbGain.connect(reverbDest);
+
+                const oscillators = [];
+                const gains = [];
+
+                harmonics.forEach((h) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq * h.mult;
+                    // Slight random detune for richness
+                    osc.detune.value = (Math.random() - 0.5) * 4;
+                    g.gain.value = 0;
+                    osc.connect(g);
+                    g.connect(dryGain);
+                    if (reverbDest) g.connect(reverbGain);
+                    osc.start(now);
+                    // Attack
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(h.amp * 0.7, now + 0.004);
+                    // Decay
+                    g.gain.exponentialRampToValueAtTime(0.001, now + h.decayTime);
+                    oscillators.push(osc);
+                    gains.push(g);
+                });
+
+                // Overall envelope
+                dryGain.gain.setValueAtTime(0, now);
+                dryGain.gain.linearRampToValueAtTime(0.9, now + 0.003);
+                dryGain.gain.exponentialRampToValueAtTime(0.5, now + 0.4);
+                reverbGain.gain.setValueAtTime(0, now);
+                reverbGain.gain.linearRampToValueAtTime(0.25, now + 0.003);
+
+                const releaseAll = (releaseTime) => {
+                    const t = ctx.currentTime;
+                    const rel = releaseTime || 0.15;
+                    dryGain.gain.setValueAtTime(dryGain.gain.value, t);
+                    dryGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    reverbGain.gain.setValueAtTime(reverbGain.gain.value, t);
+                    reverbGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    const stopTime = t + rel + 0.1;
+                    oscillators.forEach((osc) => {
+                        try { osc.stop(stopTime); } catch (e) {}
+                    });
+                    // Cleanup
+                    setTimeout(() => {
+                        oscillators.forEach((osc) => { try { osc.disconnect(); } catch (e) {} });
+                        gains.forEach((g) => { try { g.disconnect(); } catch (e) {} });
+                        try { dryGain.disconnect(); } catch (e) {}
+                        try { reverbGain.disconnect(); } catch (e) {}
+                    }, (rel + 0.2) * 1000);
+                };
+
+                return { release: releaseAll, dryGain, reverbGain };
+            }
+
+            function createOrganNote(ctx, freq, destination, reverbDest) {
+                const now = ctx.currentTime;
+                const harmonicAmps = [1.0, 0.75, 0.55, 0.35, 0.22, 0.14, 0.08, 0.04];
+                const dryGain = ctx.createGain();
+                dryGain.gain.value = 0;
+                dryGain.connect(destination);
+
+                const reverbGain = ctx.createGain();
+                reverbGain.gain.value = 0;
+                if (reverbDest) reverbGain.connect(reverbDest);
+
+                const oscillators = [];
+                const gains = [];
+
+                harmonicAmps.forEach((amp, i) => {
+                    const mult = i + 1;
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq * mult;
+                    osc.detune.value = (Math.random() - 0.5) * 3;
+                    g.gain.value = 0;
+                    osc.connect(g);
+                    g.connect(dryGain);
+                    if (reverbDest) g.connect(reverbGain);
+                    osc.start(now);
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(amp * 0.4, now + 0.015);
+                    oscillators.push(osc);
+                    gains.push(g);
+                });
+
+                dryGain.gain.setValueAtTime(0, now);
+                dryGain.gain.linearRampToValueAtTime(0.85, now + 0.01);
+                reverbGain.gain.setValueAtTime(0, now);
+                reverbGain.gain.linearRampToValueAtTime(0.3, now + 0.01);
+
+                const releaseAll = (releaseTime) => {
+                    const t = ctx.currentTime;
+                    const rel = releaseTime || 0.08;
+                    dryGain.gain.setValueAtTime(dryGain.gain.value, t);
+                    dryGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    reverbGain.gain.setValueAtTime(reverbGain.gain.value, t);
+                    reverbGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    const stopTime = t + rel + 0.05;
+                    oscillators.forEach((osc) => { try { osc.stop(stopTime); } catch (e) {} });
+                    setTimeout(() => {
+                        oscillators.forEach((osc) => { try { osc.disconnect(); } catch (e) {}
+                        });
+                        gains.forEach((g) => { try { g.disconnect(); } catch (e) {} });
+                        try { dryGain.disconnect(); } catch (e) {}
+                        try { reverbGain.disconnect(); } catch (e) {}
+                    }, (rel + 0.15) * 1000);
+                };
+                return { release: releaseAll, dryGain, reverbGain };
+            }
+
+            function createSynthNote(ctx, freq, destination, reverbDest) {
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
+                osc.detune.value = (Math.random() - 0.5) * 2;
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 300;
+                filter.Q.value = 6;
+
+                const filterEnv = ctx.createGain();
+                filterEnv.gain.value = 5000;
+                filterEnv.connect(filter.frequency);
+
+                const dryGain = ctx.createGain();
+                dryGain.gain.value = 0;
+                osc.connect(filter);
+                filter.connect(dryGain);
+                dryGain.connect(destination);
+
+                const reverbGain = ctx.createGain();
+                reverbGain.gain.value = 0;
+                if (reverbDest) {
+                    filter.connect(reverbGain);
+                    reverbGain.connect(reverbDest);
+                }
+
+                osc.start(now);
+                filterEnv.gain.setValueAtTime(5000, now);
+                filterEnv.gain.exponentialRampToValueAtTime(600, now + 0.35);
+                dryGain.gain.setValueAtTime(0, now);
+                dryGain.gain.linearRampToValueAtTime(0.55, now + 0.03);
+                dryGain.gain.exponentialRampToValueAtTime(0.3, now + 1.5);
+                reverbGain.gain.setValueAtTime(0, now);
+                reverbGain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+
+                const releaseAll = (releaseTime) => {
+                    const t = ctx.currentTime;
+                    const rel = releaseTime || 0.2;
+                    dryGain.gain.setValueAtTime(dryGain.gain.value, t);
+                    dryGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    reverbGain.gain.setValueAtTime(reverbGain.gain.value, t);
+                    reverbGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    const stopTime = t + rel + 0.1;
+                    try { osc.stop(stopTime); } catch (e) {}
+                    setTimeout(() => {
+                        try { osc.disconnect(); } catch (e) {}
+                        try { filter.disconnect(); } catch (e) {}
+                        try { filterEnv.disconnect(); } catch (e) {}
+                        try { dryGain.disconnect(); } catch (e) {}
+                        try { reverbGain.disconnect(); } catch (e) {}
+                    }, (rel + 0.2) * 1000);
+                };
+                return { release: releaseAll, dryGain, reverbGain };
+            }
+
+            function createBellNote(ctx, freq, destination, reverbDest) {
+                const now = ctx.currentTime;
+                const dryGain = ctx.createGain();
+                dryGain.gain.value = 0;
+                dryGain.connect(destination);
+                const reverbGain = ctx.createGain();
+                reverbGain.gain.value = 0;
+                if (reverbDest) reverbGain.connect(reverbDest);
+
+                const partials = [
+                    { mult: 1.0, amp: 1.0, decay: 0.55 },
+                    { mult: 2.76, amp: 0.6, decay: 0.35 },
+                    { mult: 5.4, amp: 0.35, decay: 0.2 },
+                    { mult: 8.9, amp: 0.15, decay: 0.12 },
+                    { mult: 3.93, amp: 0.25, decay: 0.28 },
+                ];
+
+                const oscillators = [];
+                const gains = [];
+                partials.forEach((p) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq * p.mult;
+                    osc.detune.value = (Math.random() - 0.5) * 2;
+                    g.gain.value = 0;
+                    osc.connect(g);
+                    g.connect(dryGain);
+                    if (reverbDest) g.connect(reverbGain);
+                    osc.start(now);
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(p.amp * 0.5, now + 0.002);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + p.decay);
+                    oscillators.push(osc);
+                    gains.push(g);
+                });
+
+                dryGain.gain.setValueAtTime(0, now);
+                dryGain.gain.linearRampToValueAtTime(0.7, now + 0.002);
+                dryGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                reverbGain.gain.setValueAtTime(0, now);
+                reverbGain.gain.linearRampToValueAtTime(0.45, now + 0.002);
+
+                const releaseAll = (releaseTime) => {
+                    const t = ctx.currentTime;
+                    const rel = releaseTime || 0.08;
+                    dryGain.gain.setValueAtTime(dryGain.gain.value, t);
+                    dryGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    reverbGain.gain.setValueAtTime(reverbGain.gain.value, t);
+                    reverbGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    const stopTime = t + rel + 0.1;
+                    oscillators.forEach((osc) => { try { osc.stop(stopTime); } catch (e) {} });
+                    setTimeout(() => {
+                        oscillators.forEach((osc) => { try { osc.disconnect(); } catch (e) {}
+                        });
+                        gains.forEach((g) => { try { g.disconnect(); } catch (e) {} });
+                        try { dryGain.disconnect(); } catch (e) {}
+                        try { reverbGain.disconnect(); } catch (e) {}
+                    }, (rel + 0.2) * 1000);
+                };
+                return { release: releaseAll, dryGain, reverbGain };
+            }
+
+            function createPluckNote(ctx, freq, destination, reverbDest) {
+                const now = ctx.currentTime;
+                const dryGain = ctx.createGain();
+                dryGain.gain.value = 0;
+                dryGain.connect(destination);
+                const reverbGain = ctx.createGain();
+                reverbGain.gain.value = 0;
+                if (reverbDest) reverbGain.connect(reverbDest);
+
+                // Bright pluck using filtered sawtooth burst
+                const osc = ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 3500;
+                filter.Q.value = 3;
+                const bodyFilter = ctx.createBiquadFilter();
+                bodyFilter.type = 'peaking';
+                bodyFilter.frequency.value = freq * 1.5;
+                bodyFilter.Q.value = 4;
+                bodyFilter.gain.value = 8;
+
+                osc.connect(filter);
+                filter.connect(bodyFilter);
+                bodyFilter.connect(dryGain);
+                if (reverbDest) bodyFilter.connect(reverbGain);
+
+                osc.start(now);
+                dryGain.gain.setValueAtTime(0, now);
+                dryGain.gain.linearRampToValueAtTime(0.7, now + 0.002);
+                dryGain.gain.exponentialRampToValueAtTime(0.3, now + 0.08);
+                dryGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+                reverbGain.gain.setValueAtTime(0, now);
+                reverbGain.gain.linearRampToValueAtTime(0.35, now + 0.002);
+
+                const releaseAll = (releaseTime) => {
+                    const t = ctx.currentTime;
+                    const rel = releaseTime || 0.06;
+                    dryGain.gain.setValueAtTime(dryGain.gain.value, t);
+                    dryGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    reverbGain.gain.setValueAtTime(reverbGain.gain.value, t);
+                    reverbGain.gain.exponentialRampToValueAtTime(0.001, t + rel);
+                    const stopTime = t + rel + 0.1;
+                    try { osc.stop(stopTime); } catch (e) {}
+                    setTimeout(() => {
+                        try { osc.disconnect(); } catch (e) {}
+                        try { filter.disconnect(); } catch (e) {}
+                        try { bodyFilter.disconnect(); } catch (e) {}
+                        try { dryGain.disconnect(); } catch (e) {}
+                        try { reverbGain.disconnect(); } catch (e) {}
+                    }, (rel + 0.2) * 1000);
+                };
+                return { release: releaseAll, dryGain, reverbGain };
+            }
+
+            function createNote(instrument, ctx, freq, destination, reverbDest) {
+                switch (instrument) {
+                    case 'piano':
+                        return createPianoNote(ctx, freq, destination, reverbDest);
+                    case 'organ':
+                        return createOrganNote(ctx, freq, destination, reverbDest);
+                    case 'synth':
+                        return createSynthNote(ctx, freq, destination, reverbDest);
+                    case 'bell':
+                        return createBellNote(ctx, freq, destination, reverbDest);
+                    case 'pluck':
+                        return createPluckNote(ctx, freq, destination, reverbDest);
+                    default:
+                        return createPianoNote(ctx, freq, destination, reverbDest);
+                }
+            }
+
+            function playMidiNote(midiNote) {
+                if (!audioCtx) initAudio();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                // If already playing, release first
+                if (activeNotes.has(midiNote)) {
+                    const existing = activeNotes.get(midiNote);
+                    existing.release(0.04);
+                    activeNotes.delete(midiNote);
+                }
+
+                const freq = midiToFreq(midiNote);
+                sustainedNotes.delete(midiNote); // if re-struck, remove from sustain hold
+                const reverbDest = getReverbInput();
+                const noteData = createNote(currentInstrument, audioCtx, freq, masterGain, reverbDest);
+
+                activeNotes.set(midiNote, { release: noteData.release, instrument: currentInstrument });
+                return noteData;
+            }
+
+            function releaseMidiNote(midiNote, releaseTime) {
+                if (sustainOn) {
+                    // If sustain is on, keep the note sounding; remember it for later release
+                    sustainedNotes.add(midiNote);
+                    return;
+                }
+                if (activeNotes.has(midiNote)) {
+                    const noteData = activeNotes.get(midiNote);
+                    noteData.release(releaseTime || 0.12);
+                    activeNotes.delete(midiNote);
+                }
+            }
+
+            function releaseAllNotes(releaseTime) {
+                activeNotes.forEach((noteData, midi) => {
+                    noteData.release(releaseTime || 0.08);
+                });
+                activeNotes.clear();
+                sustainedNotes.clear();
+            }
+
+            // ─────────────────────────────────────
+            // PIANO UI
+            // ─────────────────────────────────────
+            const pianoEl = document.getElementById('piano');
+            const pianoWrapper = document.getElementById('pianoWrapper');
+            let allKeyElements = []; // { element, midi, isBlack }
+            let keyElementMap = new Map(); // midi -> element
+
+            function buildPiano() {
+                pianoEl.innerHTML = '';
+                allKeyElements = [];
+                keyElementMap = new Map();
+
+                const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
+                const wkWidth = isMobile ? Math.max(30, Math.min(WHITE_KEY_WIDTH, (window.innerWidth - 30) / TOTAL_WHITE_KEYS))
+                    : WHITE_KEY_WIDTH;
+                const wkHeight = isMobile ? 160 : WHITE_KEY_HEIGHT;
+                const bkWidth = wkWidth * BLACK_KEY_WIDTH_RATIO;
+                const bkHeight = wkHeight * BLACK_KEY_HEIGHT_RATIO;
+
+                pianoEl.style.width = (wkWidth * TOTAL_WHITE_KEYS) + 'px';
+                pianoEl.style.height = (wkHeight + 5) + 'px';
+
+                // Create white keys
+                const whiteKeyEls = [];
+                whiteKeyNotes.forEach((noteData, index) => {
+                    const key = document.createElement('div');
+                    key.className = 'white-key';
+                    key.dataset.midi = noteData.midi;
+                    key.dataset.noteName = noteData.name;
+                    key.dataset.kbKey = noteData.kbKey;
+                    key.dataset.isBlack = 'false';
+                    key.style.width = wkWidth + 'px';
+                    key.style.height = wkHeight + 'px';
+                    key.style.flexShrink = '0';
+                    key.innerHTML = `
+                <span class="key-label">
+                  <span class="note-name">${noteData.name.replace('3','').replace('4','').replace('5','')}</span>
+                  <span class="kb-key">${noteData.kbKey}</span>
+                </span>`;
+                    pianoEl.appendChild(key);
+                    whiteKeyEls.push(key);
+                    allKeyElements.push({ element: key, midi: noteData.midi, isBlack: false });
+                    keyElementMap.set(noteData.midi, key);
+                });
+
+                // Create black keys (absolutely positioned)
+                blackKeyDefs.forEach((bkData) => {
+                    const key = document.createElement('div');
+                    key.className = 'black-key';
+                    key.dataset.midi = bkData.midi;
+                    key.dataset.noteName = bkData.name;
+                    key.dataset.kbKey = bkData.kbKey;
+                    key.dataset.isBlack = 'true';
+                    key.style.width = bkWidth + 'px';
+                    key.style.height = bkHeight + 'px';
+                    // Position: centered over the gap after whiteKeyIndex
+                    const leftPos = (bkData.afterWhiteIndex + 1) * wkWidth - bkWidth / 2;
+                    key.style.left = leftPos + 'px';
+                    key.style.top = '0px';
+                    key.innerHTML = `
+                <span class="key-label">
+                  <span class="kb-key">${bkData.kbKey}</span>
+                </span>`;
+                    pianoEl.appendChild(key);
+                    allKeyElements.push({ element: key, midi: bkData.midi, isBlack: true });
+                    keyElementMap.set(bkData.midi, key);
+                });
+
+                // Store dimensions for pointer hit testing
+                pianoEl._wkWidth = wkWidth;
+                pianoEl._wkHeight = wkHeight;
+                pianoEl._bkWidth = bkWidth;
+                pianoEl._bkHeight = bkHeight;
+                pianoEl._whiteKeyEls = whiteKeyEls;
+            }
+
+            function findKeyAtPoint(x, y) {
+                // Check black keys first (higher z-index)
+                for (let i = allKeyElements.length - 1; i >= 0; i--) {
+                    const { element } = allKeyElements[i];
+                    const rect = element.getBoundingClientRect();
+                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                        return element;
+                    }
+                }
+                return null;
+            }
+
+            function activateKeyElement(el) {
+                if (!el) return;
+                el.classList.add('active');
+            }
+
+            function deactivateKeyElement(el) {
+                if (!el) return;
+                el.classList.remove('active');
+            }
+
+            // ─────────────────────────────────────
+            // EVENT HANDLING
+            // ─────────────────────────────────────
+            function handleKeyPress(midiNote, element) {
+                if (midiNote == null) return;
+                playMidiNote(midiNote);
+                activateKeyElement(element);
+            }
+
+            function handleKeyRelease(midiNote, element, releaseTime) {
+                if (midiNote == null) return;
+                releaseMidiNote(midiNote, releaseTime);
+                deactivateKeyElement(element);
+            }
+
+            // Pointer events on piano wrapper
+            pianoWrapper.addEventListener('pointerdown', (e) => {
+                initAudio();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const keyEl = findKeyAtPoint(e.clientX, e.clientY);
+                if (keyEl) {
+                    const midi = parseInt(keyEl.dataset.midi);
+                    if (!isNaN(midi)) {
+                        // Release previous note for this pointer if any
+                        if (activePointers.has(e.pointerId)) {
+                            const prev = activePointers.get(e.pointerId);
+                            handleKeyRelease(prev.midiNote, prev.element, 0.04);
+                        }
+                        handleKeyPress(midi, keyEl);
+                        activePointers.set(e.pointerId, { midiNote: midi, element: keyEl });
+                        // Prevent scroll when touching keys
+                        if (e.pointerType === 'touch') {
+                            e.preventDefault();
+                        }
+                    }
+                }
+            });
+
+            pianoWrapper.addEventListener('pointermove', (e) => {
+                if (!activePointers.has(e.pointerId)) return;
+                const current = activePointers.get(e.pointerId);
+                const keyEl = findKeyAtPoint(e.clientX, e.clientY);
+                if (keyEl) {
+                    const midi = parseInt(keyEl.dataset.midi);
+                    if (!isNaN(midi) && midi !== current.midiNote) {
+                        // Release old, press new
+                        handleKeyRelease(current.midiNote, current.element, 0.04);
+                        handleKeyPress(midi, keyEl);
+                        activePointers.set(e.pointerId, { midiNote: midi, element: keyEl });
+                    }
+                }
+                if (e.pointerType === 'touch' && keyEl) {
+                    e.preventDefault();
+                }
+            });
+
+            // Global pointerup to catch releases outside the piano
+            document.addEventListener('pointerup', (e) => {
+                if (activePointers.has(e.pointerId)) {
+                    const current = activePointers.get(e.pointerId);
+                    handleKeyRelease(current.midiNote, current.element, 0.1);
+                    activePointers.delete(e.pointerId);
+                }
+            });
+
+            document.addEventListener('pointercancel', (e) => {
+                if (activePointers.has(e.pointerId)) {
+                    const current = activePointers.get(e.pointerId);
+                    handleKeyRelease(current.midiNote, current.element, 0.05);
+                    activePointers.delete(e.pointerId);
+                }
+            });
+
+            // Prevent context menu on long press (mobile)
+            pianoWrapper.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+
+            // Keyboard support
+            const kbToMidi = {};
+            whiteKeyNotes.forEach((n) => { kbToMidi[n.kbKey.toLowerCase()] = n.midi; });
+            blackKeyDefs.forEach((n) => { kbToMidi[n.kbKey.toLowerCase()] = n.midi; });
+            const pressedKbKeys = new Set();
+
+            document.addEventListener('keydown', (e) => {
+                if (e.repeat) return;
+                const key = e.key.toLowerCase();
+                if (kbToMidi[key] !== undefined && !pressedKbKeys.has(key)) {
+                    // Don't intercept if user is typing in an input
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target
+                        .isContentEditable) return;
+                    e.preventDefault();
+                    initAudio();
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const midi = kbToMidi[key];
+                    const el = keyElementMap.get(midi);
+                    handleKeyPress(midi, el);
+                    pressedKbKeys.add(key);
+                    // Track for pointer-like behavior
+                    const fakePointerId = 'kb_' + key;
+                    if (activePointers.has(fakePointerId)) {
+                        const prev = activePointers.get(fakePointerId);
+                        handleKeyRelease(prev.midiNote, prev.element, 0.04);
+                    }
+                    activePointers.set(fakePointerId, { midiNote: midi, element: el });
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                const key = e.key.toLowerCase();
+                if (pressedKbKeys.has(key)) {
+                    pressedKbKeys.delete(key);
+                    const midi = kbToMidi[key];
+                    const el = keyElementMap.get(midi);
+                    handleKeyRelease(midi, el, 0.1);
+                    const fakePointerId = 'kb_' + key;
+                    activePointers.delete(fakePointerId);
+                }
+            });
+
+            // ─────────────────────────────────────
+            // SUSTAIN PEDAL
+            // ─────────────────────────────────────
+            const sustainBtn = document.getElementById('sustainPedal');
+            
+            function setSustain(state) {
+                sustainOn = state;
+                if (state) {
+                    sustainBtn.classList.add('active');
+                } else {
+                    sustainBtn.classList.remove('active');
+                    // Release all notes that were held by sustain
+                    sustainedNotes.forEach(midi => {
+                        if (activeNotes.has(midi)) {
+                            activeNotes.get(midi).release(0.08);
+                            activeNotes.delete(midi);
+                        }
+                    });
+                    sustainedNotes.clear();
+                }
+            }
+
+            sustainBtn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                setSustain(true);
+            });
+
+            sustainBtn.addEventListener('pointerup', (e) => {
+                e.preventDefault();
+                setSustain(false);
+            });
+
+            sustainBtn.addEventListener('pointerleave', (e) => {
+                // In case the finger slides off the button while still pressing
+                if (sustainOn) {
+                    setSustain(false);
+                }
+            });
+
+            // ─────────────────────────────────────
+            // CONTROL PANEL HANDLERS
+            // ─────────────────────────────────────
+            const instrumentTabs = document.getElementById('instrumentTabs');
+            const volumeSlider = document.getElementById('volumeSlider');
+            const reverbToggle = document.getElementById('reverbToggle');
+
+            instrumentTabs.addEventListener('click', (e) => {
+                const btn = e.target.closest('.inst-btn');
+                if (!btn) return;
+                const instrument = btn.dataset.instrument;
+                if (instrument && instrument !== currentInstrument) {
+                    // Release all currently playing notes
+                    releaseAllNotes(0.06);
+                    // Update active class
+                    instrumentTabs.querySelectorAll('.inst-btn').forEach(b => b.classList.remove(
+                        'active'));
+                    btn.classList.add('active');
+                    currentInstrument = instrument;
+                }
+            });
+
+            volumeSlider.addEventListener('input', () => {
+                const vol = parseInt(volumeSlider.value) / 100;
+                setVolume(vol);
+            });
+
+            reverbToggle.addEventListener('click', () => {
+                const isOn = reverbToggle.classList.contains('on');
+                if (isOn) {
+                    reverbToggle.classList.remove('on');
+                    reverbToggle.textContent = '🔇 Reverb';
+                    setReverbEnabled(false);
+                } else {
+                    reverbToggle.classList.add('on');
+                    reverbToggle.textContent = '✨ Reverb';
+                    setReverbEnabled(true);
+                }
+            });
+
+            // ─────────────────────────────────────
+            // INITIALIZATION & RESIZE
+            // ─────────────────────────────────────
+            function init() {
+                buildPiano();
+                setVolume(parseInt(volumeSlider.value) / 100);
+                // Attempt to auto-init audio on first user interaction
+                const autoInit = () => {
+                    initAudio();
+                    document.removeEventListener('touchstart', autoInit);
+                    document.removeEventListener('mousedown', autoInit);
+                    document.removeEventListener('keydown', autoInit);
+                };
+                document.addEventListener('touchstart', autoInit, { once: true });
+                document.addEventListener('mousedown', autoInit, { once: true });
+                document.addEventListener('keydown', autoInit, { once: true });
+            }
+
+            let resizeDebounce;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeDebounce);
+                resizeDebounce = setTimeout(() => {
+                    // Release all notes before rebuilding
+                    releaseAllNotes(0.04);
+                    activePointers.clear();
+                    buildPiano();
+                }, 300);
+            });
+
+            // ─────────────────────────────────────
+            // START
+            // ─────────────────────────────────────
+            init();
+
+            console.log('🎹 Web Piano ready!');
+            console.log('  Instruments: Piano | Organ | Synth | Bell | Pluck');
+            console.log('  Play with mouse/touch or keyboard (Z-M for lower octave, Q-I for upper)');
+            console.log('  Black keys: S D G H J (lower) and 2 3 5 6 7 (upper)');
+            console.log('  Try sliding your finger across the keys!');
+        })();
+    </script>
+</body>
+</html>
