@@ -858,7 +858,9 @@
                     keyEl.dataset.type = 'white';
                     keyEl.dataset.whiteIndex = index;
                     keyEl.style.left = (index * WHITE_KEY_WIDTH) + 'px';
-                    keyEl.style.width = (WHITE_KEY_WIDTH - 1) + 'px';
+                    // keyEl.style.width = (WHITE_KEY_WIDTH - 1) + 'px'; // old gap between keys
+                    keyEl.style.width = WHITE_KEY_WIDTH + 'px';
+                    keyEl.style.boxSizing = 'border-box';   // ensures borders don’t overflow
                     keyEl.style.top = '0';
                     keyEl.style.height = '100%';
                     keyEl.setAttribute('role', 'button');
@@ -1021,22 +1023,50 @@
 
                 if (insideCurrent) return; // still on the same key, do nothing
 
-                // Pointer moved outside current key – find new key
+                // Pointer moved outside current key – find new key (with fallback for 1px gaps)
                 const kbRect = keyboardInner.getBoundingClientRect();
                 const relX = e.clientX - kbRect.left + keyboardScroll.scrollLeft;
                 const relY = e.clientY - kbRect.top;
-                const newKeyEl = getKeyFromPoint(relX, relY);
-                const newMidi = newKeyEl ? parseInt(newKeyEl.dataset.midi) : null;
+
+                let newKeyEl = getKeyFromPoint(relX, relY);
+                let newMidi = newKeyEl ? parseInt(newKeyEl.dataset.midi) : null;
+
+                // Fallback: if we landed in a gap, find the white key directly from coordinates
+                if (!newKeyEl) {
+                    const whiteIndex = Math.round(relX / WHITE_KEY_WIDTH);
+                    if (whiteIndex >= 0 && whiteIndex < whiteKeyMidiNotes.length) {
+                        const midiCandidate = whiteKeyMidiNotes[whiteIndex];
+                        // Check if a black key should be above this white key at this x position
+                        const blackKey = blackKeyDefs.find(def => {
+                            const whiteBeforeMidi = def.midi - 1;
+                            const wIdx = whiteKeyMidiNotes.indexOf(whiteBeforeMidi);
+                            if (wIdx < 0) return false;
+                            const centerX = (wIdx + 0.5) * WHITE_KEY_WIDTH;
+                            const bw = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_RATIO;
+                            const leftX = centerX - bw / 2;
+                            return relX >= leftX && relX <= leftX + bw && relY <= keyboardInner.clientHeight * BLACK_KEY_HEIGHT_RATIO;
+                        });
+                        if (blackKey && relY <= keyboardInner.clientHeight * BLACK_KEY_HEIGHT_RATIO) {
+                            newMidi = blackKey.midi;
+                            newKeyEl = allKeyElements[blackKey.midi];
+                        } else {
+                            newMidi = midiCandidate;
+                            newKeyEl = allKeyElements[midiCandidate];
+                        }
+                    }
+                }
 
                 if (newMidi !== null && newMidi !== state.midiNote) {
                     // Release old key
                     noteOff(state.midiNote, pointerId);
                     state.keyElement.classList.remove('pressed');
-                    // Press new key
-                    newKeyEl.classList.add('pressed');
-                    noteOn(newMidi, pointerId);
-                    state.midiNote = newMidi;
-                    state.keyElement = newKeyEl;
+                    // Press new key (if the element exists)
+                    if (newKeyEl) {
+                        newKeyEl.classList.add('pressed');
+                        noteOn(newMidi, pointerId);
+                        state.midiNote = newMidi;
+                        state.keyElement = newKeyEl;
+                    }
                 }
             }
 
