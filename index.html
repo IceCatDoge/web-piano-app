@@ -518,7 +518,7 @@
             const TOTAL_WHITE_KEYS = 36;
             const TOTAL_BLACK_KEYS = 25;
             const KEYBOARD_TOTAL_WIDTH = TOTAL_WHITE_KEYS * WHITE_KEY_WIDTH;
-            const SCROLL_MOVEMENT_THRESHOLD = 28; // Origiinal value: 14
+            const SCROLL_MOVEMENT_THRESHOLD = 32; // Origiinal value: 14. Higher val creates a smoother effect
 
             const whiteKeyMidiNotes = [];
             for (let n = FIRST_MIDI_NOTE; n <= LAST_MIDI_NOTE; n++) {
@@ -952,9 +952,8 @@
             function handlePointerDown(e) {
                 ensureAudioContext();
                 const pointerId = e.pointerId;
-                // Use the same coordinate-based hit test for consistency
                 const kbRect = keyboardInner.getBoundingClientRect();
-                const relX = e.clientX - kbRect.left + keyboardScroll.scrollLeft;
+                const relX = e.clientX - kbRect.left;
                 const relY = e.clientY - kbRect.top;
                 const targetKey = getKeyFromPoint(relX, relY);
                 if (!targetKey || !targetKey.dataset.midi) return;
@@ -1013,58 +1012,46 @@
 
                 if (state.isScrolling || !state.keyElement) return;
 
-                // Glissando – only change note if pointer has LEFT the current key's bounding rect
-                const currentRect = state.keyElement.getBoundingClientRect();
-                const insideCurrent =
-                    e.clientX >= currentRect.left &&
-                    e.clientX <= currentRect.right &&
-                    e.clientY >= currentRect.top &&
-                    e.clientY <= currentRect.bottom;
-
-                if (insideCurrent) return; // still on the same key, do nothing
-
-                // Pointer moved outside current key – find new key (with fallback for 1px gaps)
+                // Glissando – directly compute the note under the pointer (ignores key rects, works with gaps)
                 const kbRect = keyboardInner.getBoundingClientRect();
-                const relX = e.clientX - kbRect.left + keyboardScroll.scrollLeft;
+                const relX = e.clientX - kbRect.left;
                 const relY = e.clientY - kbRect.top;
 
-                let newKeyEl = getKeyFromPoint(relX, relY);
-                let newMidi = newKeyEl ? parseInt(newKeyEl.dataset.midi) : null;
-
-                // Fallback: if we landed in a gap, find the white key directly from coordinates
-                if (!newKeyEl) {
+                // Determine MIDI note from coordinates (robust, handles gaps)
+                let targetMidi = null;
+                // Try visual hit test first
+                const hitKey = getKeyFromPoint(relX, relY);
+                if (hitKey && hitKey.dataset.midi) {
+                    targetMidi = parseInt(hitKey.dataset.midi);
+                } else {
+                    // Fallback: map x/y to the nearest white/black key
                     const whiteIndex = Math.round(relX / WHITE_KEY_WIDTH);
                     if (whiteIndex >= 0 && whiteIndex < whiteKeyMidiNotes.length) {
-                        const midiCandidate = whiteKeyMidiNotes[whiteIndex];
-                        // Check if a black key should be above this white key at this x position
+                        const whiteMidi = whiteKeyMidiNotes[whiteIndex];
+                        // Check if a black key occupies this position
                         const blackKey = blackKeyDefs.find(def => {
-                            const whiteBeforeMidi = def.midi - 1;
-                            const wIdx = whiteKeyMidiNotes.indexOf(whiteBeforeMidi);
+                            const wBeforeMidi = def.midi - 1;
+                            const wIdx = whiteKeyMidiNotes.indexOf(wBeforeMidi);
                             if (wIdx < 0) return false;
                             const centerX = (wIdx + 0.5) * WHITE_KEY_WIDTH;
                             const bw = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_RATIO;
                             const leftX = centerX - bw / 2;
                             return relX >= leftX && relX <= leftX + bw && relY <= keyboardInner.clientHeight * BLACK_KEY_HEIGHT_RATIO;
                         });
-                        if (blackKey && relY <= keyboardInner.clientHeight * BLACK_KEY_HEIGHT_RATIO) {
-                            newMidi = blackKey.midi;
-                            newKeyEl = allKeyElements[blackKey.midi];
-                        } else {
-                            newMidi = midiCandidate;
-                            newKeyEl = allKeyElements[midiCandidate];
-                        }
+                        targetMidi = blackKey ? blackKey.midi : whiteMidi;
                     }
                 }
 
-                if (newMidi !== null && newMidi !== state.midiNote) {
+                if (targetMidi !== null && targetMidi !== state.midiNote) {
                     // Release old key
                     noteOff(state.midiNote, pointerId);
-                    state.keyElement.classList.remove('pressed');
-                    // Press new key (if the element exists)
+                    if (state.keyElement) state.keyElement.classList.remove('pressed');
+                    // Press new key
+                    const newKeyEl = allKeyElements[targetMidi];
                     if (newKeyEl) {
                         newKeyEl.classList.add('pressed');
-                        noteOn(newMidi, pointerId);
-                        state.midiNote = newMidi;
+                        noteOn(targetMidi, pointerId);
+                        state.midiNote = targetMidi;
                         state.keyElement = newKeyEl;
                     }
                 }
