@@ -518,7 +518,7 @@
             const TOTAL_WHITE_KEYS = 36;
             const TOTAL_BLACK_KEYS = 25;
             const KEYBOARD_TOTAL_WIDTH = TOTAL_WHITE_KEYS * WHITE_KEY_WIDTH;
-            const SCROLL_MOVEMENT_THRESHOLD = 22; // Origiinal value: 14
+            const SCROLL_MOVEMENT_THRESHOLD = 28; // Origiinal value: 14
 
             const whiteKeyMidiNotes = [];
             for (let n = FIRST_MIDI_NOTE; n <= LAST_MIDI_NOTE; n++) {
@@ -950,13 +950,23 @@
             function handlePointerDown(e) {
                 ensureAudioContext();
                 const pointerId = e.pointerId;
-                const targetKey = e.target.closest('.key');
+                // Use the same coordinate-based hit test for consistency
+                const kbRect = keyboardInner.getBoundingClientRect();
+                const relX = e.clientX - kbRect.left + keyboardScroll.scrollLeft;
+                const relY = e.clientY - kbRect.top;
+                const targetKey = getKeyFromPoint(relX, relY);
                 if (!targetKey || !targetKey.dataset.midi) return;
 
                 const midiNote = parseInt(targetKey.dataset.midi);
-                const rect = keyboardInner.getBoundingClientRect();
                 const clientX = e.clientX;
                 const clientY = e.clientY;
+
+                // Remove any previous state for this pointer (in case of missed up events)
+                if (pointerStates.has(pointerId)) {
+                    const oldState = pointerStates.get(pointerId);
+                    if (oldState.keyElement) oldState.keyElement.classList.remove('pressed');
+                    pointerStates.delete(pointerId);
+                }
 
                 pointerStates.set(pointerId, {
                     initialX: clientX,
@@ -985,14 +995,13 @@
                 state.currentX = e.clientX;
                 state.currentY = e.clientY;
 
+                // Scrolling detection (unchanged)
                 if (!state.isScrolling && totalMovement > SCROLL_MOVEMENT_THRESHOLD) {
                     if (Math.abs(dx) > Math.abs(dy) * 1.2 && Math.abs(dx) > SCROLL_MOVEMENT_THRESHOLD) {
                         state.isScrolling = true;
                         if (state.midiNote !== null) {
                             noteOff(state.midiNote, pointerId);
-                            if (state.keyElement) {
-                                state.keyElement.classList.remove('pressed');
-                            }
+                            if (state.keyElement) state.keyElement.classList.remove('pressed');
                             state.midiNote = null;
                             state.keyElement = null;
                         }
@@ -1000,27 +1009,34 @@
                     }
                 }
 
-                if (state.isScrolling) return;
+                if (state.isScrolling || !state.keyElement) return;
 
+                // Glissando – only change note if pointer has LEFT the current key's bounding rect
+                const currentRect = state.keyElement.getBoundingClientRect();
+                const insideCurrent =
+                    e.clientX >= currentRect.left &&
+                    e.clientX <= currentRect.right &&
+                    e.clientY >= currentRect.top &&
+                    e.clientY <= currentRect.bottom;
+
+                if (insideCurrent) return; // still on the same key, do nothing
+
+                // Pointer moved outside current key – find new key
                 const kbRect = keyboardInner.getBoundingClientRect();
                 const relX = e.clientX - kbRect.left + keyboardScroll.scrollLeft;
                 const relY = e.clientY - kbRect.top;
                 const newKeyEl = getKeyFromPoint(relX, relY);
-                const newMidi = getMidiFromElement(newKeyEl);
+                const newMidi = newKeyEl ? parseInt(newKeyEl.dataset.midi) : null;
 
                 if (newMidi !== null && newMidi !== state.midiNote) {
-                    if (state.midiNote !== null) {
-                        noteOff(state.midiNote, pointerId);
-                        if (state.keyElement) {
-                            state.keyElement.classList.remove('pressed');
-                        }
-                    }
-                    if (newKeyEl) {
-                        newKeyEl.classList.add('pressed');
-                        noteOn(newMidi, pointerId);
-                        state.midiNote = newMidi;
-                        state.keyElement = newKeyEl;
-                    }
+                    // Release old key
+                    noteOff(state.midiNote, pointerId);
+                    state.keyElement.classList.remove('pressed');
+                    // Press new key
+                    newKeyEl.classList.add('pressed');
+                    noteOn(newMidi, pointerId);
+                    state.midiNote = newMidi;
+                    state.keyElement = newKeyEl;
                 }
             }
 
